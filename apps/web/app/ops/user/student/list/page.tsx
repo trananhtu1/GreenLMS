@@ -1,0 +1,590 @@
+"use client";
+import {
+  DeleteOutlined,
+  EditOutlined,
+  EyeOutlined,
+  LockOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+  SearchOutlined,
+  UnlockOutlined,
+} from "@ant-design/icons";
+import { zodResolver } from "@hookform/resolvers/zod";
+import CustomButton from "@web/components/common/CustomButton";
+import CustomDrawer from "@web/components/common/CustomDrawer";
+import CustomDropdown from "@web/components/common/CustomDropdown";
+import CustomInput from "@web/components/common/CustomInput";
+import CustomSelect from "@web/components/common/CustomSelect";
+import CustomTooltip from "@web/components/common/CustomTooltip";
+import FilterGrid from "@web/components/common/FilterGrid";
+import PageLayout from "@web/layouts/PageLayout";
+import { DATE_TIME_FORMAT, TableColumn } from "@web/libs/common";
+import {
+  closeCreateModal,
+  openCreateModal,
+} from "@web/libs/features/table/tableSlice";
+import {
+  useCreateUserMutation,
+  useDeleteUserMutation,
+  useGetStudentsQuery,
+  useUpdateUserStatusMutation,
+} from "@web/libs/features/users/userApi";
+import { NAV_LINK, NAV_TITLE } from "@web/libs/nav";
+import { RoleName } from "@web/libs/role";
+import { RootState } from "@web/libs/store";
+import {
+  IDetailUser,
+  IUser,
+  STATUS_LABEL,
+  STATUS_TAG,
+  StatusOptions,
+  UserStatus,
+} from "@web/libs/user";
+import { Card, Modal, Table, TablePaginationConfig, Tag } from "antd";
+import { ItemType } from "antd/es/breadcrumb/Breadcrumb";
+import dayjs from "dayjs";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useForm } from "react-hook-form";
+import toast from "react-hot-toast";
+import { useDispatch, useSelector } from "react-redux";
+import { z } from "zod";
+
+const breadcrumbs: ItemType[] = [
+  {
+    href: "#",
+    title: NAV_TITLE.MANAGE_USERS,
+  },
+  {
+    title: NAV_TITLE.STUDENT_LIST,
+  },
+];
+
+const columnsTitles: TableColumn<IUser>[] = [
+  {
+    title: "STT",
+    dataIndex: "index",
+  },
+  {
+    title: "Mã học viên",
+    dataIndex: "detail",
+    render: (detail: IDetailUser) => detail.code,
+  },
+  {
+    title: "Họ và tên",
+    dataIndex: "fullName",
+  },
+  {
+    title: "Email",
+    dataIndex: "email",
+  },
+  {
+    title: "Số điện thoại",
+    dataIndex: "phoneNumber",
+  },
+  {
+    title: "Trạng thái",
+    dataIndex: "status",
+    render: (status: UserStatus) => (
+      <Tag color={STATUS_TAG[status]}>{STATUS_LABEL[status]}</Tag>
+    ),
+  },
+  {
+    title: "Ngày tạo",
+    dataIndex: "createdAt",
+    render: (date: string) => dayjs(date).format(DATE_TIME_FORMAT),
+  },
+  {
+    title: "Ngày cập nhật",
+    dataIndex: "updatedAt",
+    render: (date: string) => dayjs(date).format(DATE_TIME_FORMAT),
+  },
+  {
+    title: "",
+    dataIndex: "method",
+    fixed: "right",
+  },
+];
+
+// Define Zod schema for student form validation
+const studentFormSchema = z
+  .object({
+    firstName: z.string().min(1, "Họ là bắt buộc"),
+    lastName: z.string().min(1, "Tên là bắt buộc"),
+    email: z.string().email("Email không hợp lệ"),
+    password: z
+      .string()
+      .min(8, "Mật khẩu phải có ít nhất 8 ký tự")
+      .optional()
+      .or(z.literal("")),
+    confirmPassword: z.string().optional().or(z.literal("")),
+    phoneNumber: z.string().optional(),
+    status: z.nativeEnum(UserStatus).optional(),
+    roleName: z.nativeEnum(RoleName).optional(),
+  })
+  .refine((data) => !data.password || data.password === data.confirmPassword, {
+    message: "Mật khẩu không khớp",
+    path: ["confirmPassword"],
+  });
+
+// Define type from schema
+type StudentFormValues = z.infer<typeof studentFormSchema>;
+
+// Add search form schema
+const searchFormSchema = z.object({
+  search: z.string().optional(),
+  status: z.string().optional(),
+});
+
+type SearchFormValues = z.infer<typeof searchFormSchema>;
+
+const StudentActions = ({
+  record,
+  onEdit,
+  onDelete,
+  onView,
+  onLock,
+  onUnlock,
+}: {
+  record: IUser;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+  onView: (id: string) => void;
+  onLock: (id: string) => void;
+  onUnlock: (id: string) => void;
+}) => {
+  return (
+    <CustomDropdown>
+      <CustomButton
+        type="link"
+        title="Xem"
+        icon={<EyeOutlined />}
+        onClick={() => onView(record.id)}
+      />
+      <CustomButton
+        type="link"
+        title="Cập nhật"
+        icon={<EditOutlined />}
+        onClick={() => onEdit(record.id)}
+      />
+      {record.status === UserStatus.ACTIVE && (
+        <CustomButton
+          type="link"
+          title="Khóa"
+          color="orange"
+          icon={<LockOutlined />}
+          onClick={() => onLock(record.id)}
+        />
+      )}
+      {record.status === UserStatus.BLOCKED && (
+        <CustomButton
+          type="link"
+          title="Mở khóa"
+          color="green"
+          icon={<UnlockOutlined />}
+          onClick={() => onUnlock(record.id)}
+        />
+      )}
+      <CustomButton
+        type="link"
+        title="Xóa"
+        color="danger"
+        icon={<DeleteOutlined />}
+        onClick={() => onDelete(record.id)}
+      />
+    </CustomDropdown>
+  );
+};
+
+const Students = () => {
+  const router = useRouter();
+  const [pagination, setPagination] = useState<TablePaginationConfig>({
+    defaultCurrent: 1,
+    defaultPageSize: 10,
+    showSizeChanger: true,
+    showQuickJumper: true,
+  });
+  const [searchParams, setSearchParams] = useState<{
+    search?: string;
+    status?: string;
+    page?: number;
+    limit?: number;
+  }>({
+    page: 1,
+    limit: 10,
+  });
+  const { isOpenCreateModal } = useSelector((state: RootState) => state.table);
+  const dispatch = useDispatch();
+
+  const handleViewStudent = (id: string) => {
+    router.push(NAV_LINK.USER_DETAIL_OVERVIEW(id));
+  };
+
+  // Update the search form to use Zod
+  const searchForm = useForm<SearchFormValues>({
+    resolver: zodResolver(searchFormSchema),
+  });
+
+  // Student form with validation
+  const studentForm = useForm<StudentFormValues>({
+    resolver: zodResolver(studentFormSchema),
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      phoneNumber: "",
+      status: UserStatus.ACTIVE,
+    },
+  });
+
+  const { data, isFetching, refetch } = useGetStudentsQuery(searchParams);
+  const [createStudent, { isLoading: isCreating }] = useCreateUserMutation();
+  const [deleteStudent, { isLoading: isDeleting }] = useDeleteUserMutation();
+  const [updateUserStatus, { isLoading: isUpdatingStatus }] =
+    useUpdateUserStatusMutation();
+
+  const { current, pageSize } = pagination;
+
+  const tableColumns = useMemo(() => {
+    return columnsTitles.map((item, index) => {
+      if (item.dataIndex === "method") {
+        return {
+          ...item,
+          render: (record: IUser) => {
+            return (
+              <StudentActions
+                record={record}
+                onEdit={handleEditStudent}
+                onDelete={handleDeleteStudent}
+                onView={handleViewStudent}
+                onLock={handleLockUser}
+                onUnlock={handleUnlockUser}
+              />
+            );
+          },
+          key: index,
+        };
+      }
+      if (item.dataIndex === "fullName") {
+        return {
+          ...item,
+          render: (fullName: string, record: IUser) => (
+            <CustomTooltip title={fullName}>
+              <span
+                className="cursor-pointer text-blue-500 hover:text-blue-700"
+                onClick={() => handleViewStudent(record.id)}
+              >
+                {fullName}
+              </span>
+            </CustomTooltip>
+          ),
+          key: index,
+        };
+      }
+      return {
+        ...item,
+        key: index,
+      };
+    });
+  }, []);
+
+  const tableData = useMemo(() => {
+    return (
+      data?.data?.items.map((item, index) => ({
+        ...item,
+        index: ((current || 1) - 1) * (pageSize || 10) + index + 1,
+        method: item,
+      })) || []
+    );
+  }, [data, current, pageSize]);
+
+  // Add this useEffect to update pagination when data changes
+  useEffect(() => {
+    if (data?.data) {
+      setPagination((prev) => ({
+        ...prev,
+        current: data.data.page || prev.current,
+        pageSize: data.data.limit || prev.pageSize,
+        total: data.data.total || 0,
+      }));
+    }
+  }, [data]);
+
+  const onSubmitSearch = (formData: { search?: string; status?: string }) => {
+    setSearchParams({
+      ...searchParams,
+      ...formData,
+      page: 1, // Reset to first page on new search
+    });
+    setPagination({
+      ...pagination,
+      current: 1,
+    });
+  };
+
+  // Update the handleReset function to include refetch
+  const handleReset = () => {
+    searchForm.reset();
+    setSearchParams({
+      page: 1,
+      limit: pagination.pageSize || 10,
+    });
+    setPagination({
+      ...pagination,
+      current: 1,
+    });
+    refetch();
+  };
+
+  const handleEditStudent = (id: string) => {
+    router.push(NAV_LINK.USER_DETAIL_SETTINGS(id));
+  };
+
+  const handleDeleteStudent = (id: string) => {
+    Modal.confirm({
+      title: "Xóa học viên",
+      content: "Bạn có chắc chắn muốn xóa học viên này?",
+      okText: "Có",
+      okType: "danger",
+      cancelText: "Không",
+      onOk: async () => {
+        try {
+          await deleteStudent(id).unwrap();
+          toast.success("Học viên đã được xóa thành công");
+          refetch();
+        } catch (error) {
+          // Handled by the apiErrorMiddleware
+        }
+      },
+    });
+  };
+
+  const handleLockUser = (id: string) => {
+    Modal.confirm({
+      title: "Khóa học viên",
+      content: "Bạn có chắc chắn muốn khóa học viên này?",
+      onOk: async () => {
+        try {
+          await updateUserStatus({ id, status: UserStatus.BLOCKED }).unwrap();
+          toast.success("Học viên đã được khóa thành công");
+          refetch();
+        } catch (error) {
+          toast.error("Không thể khóa học viên");
+        }
+      },
+    });
+  };
+
+  const handleUnlockUser = (id: string) => {
+    Modal.confirm({
+      title: "Mở khóa học viên",
+      content: "Bạn có chắc chắn muốn mở khóa học viên này?",
+      onOk: async () => {
+        try {
+          await updateUserStatus({ id, status: UserStatus.ACTIVE }).unwrap();
+          toast.success("Học viên đã được mở khóa thành công");
+          refetch();
+        } catch (error) {
+          toast.error("Không thể mở khóa học viên");
+        }
+      },
+    });
+  };
+
+  const onSubmitCreate = async (data: StudentFormValues) => {
+    try {
+      // Create FormData object
+      const formData = new FormData();
+
+      // Append all form values to FormData
+      formData.append("firstName", data.firstName);
+      formData.append("lastName", data.lastName);
+      formData.append("email", data.email);
+
+      if (data.password) {
+        formData.append("password", data.password);
+      }
+
+      if (data.confirmPassword) {
+        formData.append("confirmPassword", data.confirmPassword);
+      }
+
+      if (data.phoneNumber) {
+        formData.append("phoneNumber", data.phoneNumber);
+      }
+
+      if (data.status) {
+        formData.append("status", data.status);
+      }
+
+      formData.append("roleName", RoleName.STUDENT);
+
+      // Submit FormData
+      await createStudent(formData).unwrap();
+      toast.success("Học viên đã được tạo thành công");
+
+      handleCloseDrawer();
+      refetch();
+    } catch (error) {
+      // Handled by the apiErrorMiddleware
+    }
+  };
+
+  const handleCloseDrawer = () => {
+    dispatch(closeCreateModal());
+    studentForm.reset({
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      phoneNumber: "",
+      status: UserStatus.ACTIVE,
+    });
+  };
+
+  const handlePaginationChange = (newPagination: TablePaginationConfig) => {
+    setPagination(newPagination);
+    setSearchParams({
+      ...searchParams,
+      page: newPagination.current,
+      limit: newPagination.pageSize,
+    });
+  };
+
+  return (
+    <PageLayout breadcrumbs={breadcrumbs} title={NAV_TITLE.STUDENT_LIST}>
+      <div className="flex flex-col gap-6">
+        <Card>
+          <div className="flex flex-col gap-4">
+            <FilterGrid>
+              <CustomInput
+                control={searchForm.control}
+                name="search"
+                size="large"
+                placeholder="Tìm kiếm theo tên, email hoặc mã"
+              />
+              <CustomSelect
+                control={searchForm.control}
+                name="status"
+                size="large"
+                placeholder="Lọc theo trạng thái"
+                options={StatusOptions}
+              />
+            </FilterGrid>
+            <div className="flex justify-between">
+              <div className="flex gap-4">
+                <CustomButton
+                  title="Làm mới"
+                  size="large"
+                  icon={<ReloadOutlined />}
+                  onClick={handleReset}
+                />
+                <CustomButton
+                  type="primary"
+                  title="Tìm kiếm"
+                  size="large"
+                  icon={<SearchOutlined />}
+                  onClick={searchForm.handleSubmit(onSubmitSearch)}
+                />
+              </div>
+              <CustomButton
+                type="primary"
+                title="Thêm học viên"
+                size="large"
+                icon={<PlusOutlined />}
+                onClick={() => dispatch(openCreateModal())}
+              />
+            </div>
+          </div>
+        </Card>
+        <Card>
+          <Table
+            loading={isFetching}
+            rowKey={(record) => record.id}
+            columns={tableColumns}
+            dataSource={tableData}
+            scroll={{ x: "max-content" }}
+            pagination={pagination}
+            onChange={handlePaginationChange}
+          />
+        </Card>
+      </div>
+
+      <CustomDrawer
+        title="Thêm học viên"
+        open={isOpenCreateModal}
+        onCancel={handleCloseDrawer}
+        onSubmit={studentForm.handleSubmit(onSubmitCreate)}
+        loading={isCreating}
+      >
+        <div className="flex flex-col gap-4">
+          <CustomInput
+            control={studentForm.control}
+            name="firstName"
+            label="Họ"
+            placeholder="Nhập họ"
+            required
+          />
+
+          <CustomInput
+            control={studentForm.control}
+            name="lastName"
+            label="Tên"
+            placeholder="Nhập tên"
+            required
+          />
+
+          <CustomInput
+            control={studentForm.control}
+            name="email"
+            label="Email"
+            placeholder="Nhập email"
+            required
+            autoComplete="off"
+          />
+
+          <CustomInput
+            control={studentForm.control}
+            name="password"
+            label="Mật khẩu"
+            placeholder="Nhập mật khẩu"
+            type="password"
+            required
+            autoComplete="new-password"
+          />
+
+          <CustomInput
+            control={studentForm.control}
+            name="confirmPassword"
+            label="Xác nhận mật khẩu"
+            placeholder="Xác nhận mật khẩu"
+            type="password"
+            required
+            autoComplete="new-password"
+          />
+
+          <CustomInput
+            control={studentForm.control}
+            name="phoneNumber"
+            label="Số điện thoại"
+            placeholder="Nhập số điện thoại (tùy chọn)"
+          />
+
+          <CustomSelect
+            control={studentForm.control}
+            name="status"
+            label="Trạng thái"
+            placeholder="Chọn trạng thái"
+            options={StatusOptions}
+            required
+          />
+        </div>
+      </CustomDrawer>
+    </PageLayout>
+  );
+};
+
+export default Students;

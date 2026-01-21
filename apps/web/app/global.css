@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.my-profile .ant-tabs .ant-tabs-nav {
+  @apply mb-0;
+}
+
+.custom-label {
+  @apply mb-2 inline-block;
+}
+
+.custom-label.required {
+  @apply after:ml-1 after:text-red-500 after:content-['*'];
+}

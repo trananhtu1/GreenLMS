@@ -1,0 +1,121 @@
+services:
+  # PostgreSQL Database
+  - type: pserv
+    name: greenlms-db
+    plan: free
+    region: singapore
+    databaseName: greenlms
+    databaseUser: greenlms_user
+    ipAllowList: []
+
+  # Backend API Service
+  - type: web
+    name: greenlms-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./docker/co.Dockerfile
+    dockerContext: .
+    envVars:
+      - key: CO_PORT
+        value: 8080
+      - key: DB_HOST
+        fromDatabase:
+          name: greenlms-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: greenlms-db
+          property: port
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: greenlms-db
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: greenlms-db
+          property: password
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: greenlms-db
+          property: database
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: RABBITMQ_URL
+        sync: false
+      - key: RABBITMQ_QUEUE
+        value: class_operation_queue
+      - key: CORS_ORIGIN
+        sync: false
+    healthCheckPath: /api/v1
+
+  # Notification Service
+  - type: web
+    name: greenlms-noti
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./docker/noti.Dockerfile
+    dockerContext: .
+    envVars:
+      - key: NOTI_PORT
+        value: 8081
+      - key: SOCKET_PORT
+        value: 8082
+      - key: DB_HOST
+        fromDatabase:
+          name: greenlms-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: greenlms-db
+          property: port
+      - key: POSTGRES_USER
+        fromDatabase:
+          name: greenlms-db
+          property: user
+      - key: POSTGRES_PASSWORD
+        fromDatabase:
+          name: greenlms-db
+          property: password
+      - key: POSTGRES_DB
+        fromDatabase:
+          name: greenlms-db
+          property: database
+      - key: RABBITMQ_URL
+        sync: false
+      - key: RABBITMQ_QUEUE
+        value: class_operation_queue
+      - key: EMAIL_HOST
+        value: smtp.gmail.com
+      - key: EMAIL_PORT
+        value: 587
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASSWORD
+        sync: false
+      - key: EMAIL_FROM
+        value: GreenLMS <noreply@greenlms.com>
+    healthCheckPath: /api/v1
+
+  # Frontend Web Application
+  - type: web
+    name: greenlms-web
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./docker/web.Dockerfile
+    dockerContext: .
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          type: web
+          name: greenlms-api
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: NEXT_PUBLIC_API_URL_SOCKET
+        fromService:
+          type: web
+          name: greenlms-noti
+          envVarKey: RENDER_EXTERNAL_URL

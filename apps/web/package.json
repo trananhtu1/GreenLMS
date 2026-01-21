@@ -1,0 +1,16 @@
+{
+  "name": "@class-operation/web",
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "next": "^15.3.2",
+    "react": "19.0.0",
+    "react-dom": "19.0.0"
+  },
+  "scripts": {
+    "start": "next start"
+  },
+  "nx": {
+    "name": "web"
+  }
+}

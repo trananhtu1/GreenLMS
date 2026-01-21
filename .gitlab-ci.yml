@@ -1,0 +1,29 @@
+stages:
+  - build
+  - deploy
+
+build:
+  stage: build
+  variables:
+    GIT_STRATEGY: clone
+  script:
+    - cp -f $ENV_PATH .env
+    - docker compose build web
+    - docker compose build co
+    - docker compose build noti
+  tags:
+    - co-gitlab-runner
+  only:
+    - tags
+
+deploy:
+  stage: deploy
+  variables:
+    GIT_STRATEGY: none
+  script:
+    - docker-compose down web co noti
+    - docker-compose up -d web co noti
+  tags:
+    - co-gitlab-runner
+  only:
+    - tags

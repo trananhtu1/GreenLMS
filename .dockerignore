@@ -1,0 +1,92 @@
+# Dependencies
+node_modules
+**/node_modules
+.pnp
+.pnp.js
+.yarn/cache
+.yarn/unplugged
+.yarn/build-state.yml
+.yarn/install-state.gz
+
+# Build outputs
+dist
+**/dist
+build
+**/build
+out
+**/out
+.next
+**/.next
+tmp
+**/tmp
+
+# Cache
+.nx
+.cache
+**/.cache
+.eslintcache
+tsconfig.tsbuildinfo
+
+# Testing
+coverage
+**/coverage
+jest-report
+**/jest-report
+e2e-results
+**/e2e-results
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Environment and local files
+# .env
+.env.*
+!.env.example
+.local
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Docker files (to avoid recursion)
+docker/*
+Dockerfile
+**/Dockerfile
+docker-compose*.yml
+.dockerignore
+
+# Development tools
+.devcontainer
+.vscode
+.idea
+*.sublime-*
+.DS_Store
+*.pem
+
+# Git
+.git
+.github
+.gitattributes
+.gitignore
+
+# Documentation
+*.md
+LICENSE
+**/docs
+
+# Config files not needed in production
+.editorconfig
+.prettierrc
+.eslintrc.*
+.eslintignore
+jest.config.*
+# nx.json
+tsconfig.tsbuildinfo
+# **/tsconfig.*.json
+*.tsbuildinfo
+**/babel.config.js

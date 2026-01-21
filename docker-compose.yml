@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  postgres:
+    container_name: postgres_co
+    image: postgres:16
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - ${DB_PORT}:5432
+    volumes:
+      - postgres_co:/var/lib/postgresql/data
+    env_file:
+      - .env
+
+  rabbitmq:
+    container_name: rabbitmq_co
+    image: rabbitmq:3-management
+    restart: always
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - ${RABBITMQ_PORT}:5672
+      - ${RABBITMQ_MANAGEMENT_PORT}:15672
+    volumes:
+      - rabbitmq_co:/var/lib/rabbitmq
+    env_file:
+      - .env
+
+  co:
+    container_name: co_app
+    build:
+      context: .
+      dockerfile: docker/co.Dockerfile
+    restart: always
+    ports:
+      - ${CO_PORT}:${CO_PORT}
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - RABBITMQ_URL=${RABBITMQ_URL}
+      - RABBITMQ_HTTP=${RABBITMQ_HTTP}
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+      - RABBITMQ_HOST=${RABBITMQ_HOST}
+      - RABBITMQ_PORT=${RABBITMQ_PORT}
+      - RABBITMQ_MANAGEMENT_PORT=${RABBITMQ_MANAGEMENT_PORT}
+      - RABBITMQ_QUEUE=${RABBITMQ_QUEUE}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN}
+    env_file:
+      - .env
+
+  noti:
+    container_name: noti_app
+    build:
+      context: .
+      dockerfile: docker/noti.Dockerfile
+    restart: always
+    ports:
+      - ${NOTI_PORT}:${NOTI_PORT}
+      - ${SOCKET_PORT}:${SOCKET_PORT}
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - RABBITMQ_URL=${RABBITMQ_URL}
+      - RABBITMQ_HTTP=${RABBITMQ_HTTP}
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASSWORD=${RABBITMQ_PASSWORD}
+      - RABBITMQ_HOST=${RABBITMQ_HOST}
+      - RABBITMQ_PORT=${RABBITMQ_PORT}
+      - RABBITMQ_MANAGEMENT_PORT=${RABBITMQ_MANAGEMENT_PORT}
+      - RABBITMQ_QUEUE=${RABBITMQ_QUEUE}
+    env_file:
+      - .env
+
+  web:
+    container_name: web_app
+    build:
+      context: .
+      dockerfile: docker/web.Dockerfile
+    restart: always
+    ports:
+      - 3000:3000
+    environment:
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+      - NEXT_PUBLIC_API_URL_SOCKET=${NEXT_PUBLIC_API_URL_SOCKET}
+    env_file:
+      - .env
+
+volumes:
+  postgres_co:
+  rabbitmq_co:

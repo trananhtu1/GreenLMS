@@ -1,0 +1,45 @@
+{
+  "name": "noti",
+  "version": "0.0.1",
+  "private": true,
+  "nx": {
+    "name": "noti",
+    "targets": {
+      "build": {
+        "executor": "nx:run-commands",
+        "options": {
+          "command": "webpack-cli build",
+          "args": [
+            "node-env=production"
+          ]
+        },
+        "configurations": {
+          "development": {
+            "args": [
+              "node-env=development"
+            ]
+          }
+        }
+      },
+      "serve": {
+        "executor": "@nx/js:node",
+        "defaultConfiguration": "development",
+        "dependsOn": [
+          "build"
+        ],
+        "options": {
+          "buildTarget": "noti:build",
+          "runBuildTargetDependencies": false
+        },
+        "configurations": {
+          "development": {
+            "buildTarget": "noti:build:development"
+          },
+          "production": {
+            "buildTarget": "noti:build:production"
+          }
+        }
+      }
+    }
+  }
+}
