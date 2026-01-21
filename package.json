@@ -41,7 +41,8 @@
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "typeorm": "^0.3.21",
-    "zod": "^3.24.2"
+    "zod": "^3.24.2",
+    "tslib": "^2.3.0"
   },
   "devDependencies": {
     "@eslint/compat": "^1.1.1",
@@ -84,14 +85,12 @@
     "prettier": "^3.5.3",
     "prettier-plugin-tailwindcss": "^0.6.11",
     "tailwindcss": "3.4.3",
-    "tslib": "^2.3.0",
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.19.0",
     "webpack-cli": "^5.1.4"
   },
   "workspaces": [
-    "apps/*",
-    "libs"
+    "apps/*"
   ],
   "packageManager": "yarn@1.22.22"
 }
