@@ -17,9 +17,12 @@ FROM node:18-alpine AS production
 
 WORKDIR /app
 
-# Copy built application and dependencies
+# Install production dependencies
+COPY package.json yarn.lock ./
+RUN yarn install --production --frozen-lockfile --network-timeout 600000
+
+# Copy built application
 COPY --from=builder /app/dist/apps/co ./
-COPY --from=builder /app/node_modules ./node_modules
 
 # Set environment
 ENV NODE_ENV=production
