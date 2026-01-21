@@ -38,6 +38,7 @@ import { WeeklyNormModule } from './weekly-norm/weekly-norm.module';
       database: process.env.POSTGRES_DB,
       entities: [...ListEntity],
       synchronize: true, // Don't use this in production
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     }),
     JwtModule.register({
       global: true,

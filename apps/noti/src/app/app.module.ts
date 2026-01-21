@@ -19,6 +19,7 @@ import { SocketModule } from './socket/socket.module';
       password: process.env.POSTGRES_PASSWORD,
       database: process.env.POSTGRES_DB,
       entities: [...ListEntity],
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     }),
     EmailModule,
     RabbitMQModule,
