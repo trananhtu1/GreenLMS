@@ -3,20 +3,13 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
-COPY package.json yarn.lock ./
+# Copy all source files (needed for Nx monorepo)
+COPY . .
+
+# Install dependencies
 RUN yarn install --frozen-lockfile --network-timeout 600000
 
-# Copy configuration files
-COPY eslint.config.mjs ./
-COPY nx.json ./
-COPY tsconfig*.json ./
-
-# Copy source code
-COPY apps/co ./apps/co
-COPY libs ./libs
-
-# Build the application
+# Build the backend application
 RUN npx nx build co --prod
 
 # Production stage
@@ -24,17 +17,13 @@ FROM node:18-alpine AS production
 
 WORKDIR /app
 
-# Copy built application from builder
+# Copy built application and dependencies
 COPY --from=builder /app/dist/apps/co ./
-COPY --from=builder /app/dist/libs ./libs
+COPY --from=builder /app/node_modules ./node_modules
 
-# Install production dependencies only
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/yarn.lock ./
-RUN yarn install --production --frozen-lockfile --network-timeout 600000
+# Set environment
+ENV NODE_ENV=production
 
-ARG CO_PORT=8080
-EXPOSE $CO_PORT
+EXPOSE 8080
 
 CMD ["node", "main.js"]
-
