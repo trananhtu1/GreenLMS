@@ -1,4 +1,4 @@
-# Class Operation
+# GreenLMS
 
 <a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
 
@@ -6,7 +6,7 @@ A comprehensive classroom management system built with NestJS and Next.js using 
 
 ## Project Overview
 
-Class Operation is a platform designed to help manage classroom activities, student interactions, and educational resources. The project consists of several main applications:
+GreenLMS is a platform designed to help manage classroom activities, student interactions, and educational resources. The project consists of several main applications:
 
 - **`co`**: NestJS backend API service
 - **`web`**: Next.js frontend application
