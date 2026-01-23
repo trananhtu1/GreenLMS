@@ -10,6 +10,11 @@ COPY . .
 RUN yarn install --frozen-lockfile --network-timeout 600000
 
 # Build the frontend application
+ARG NEXT_PUBLIC_API_URL
+ARG NEXT_PUBLIC_API_URL_SOCKET
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL_SOCKET=$NEXT_PUBLIC_API_URL_SOCKET
+
 RUN npx nx build web --prod
 
 # Production stage
