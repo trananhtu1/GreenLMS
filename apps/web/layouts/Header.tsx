@@ -15,10 +15,9 @@ import {
   useMarkAllAsReadMutation,
 } from "@web/libs/features/notifications/notificationApi";
 import {
-  addNotification,
   appendNotifications,
   markAllAsRead,
-  setNotifications,
+  setNotifications
 } from "@web/libs/features/notifications/notificationSlice";
 import { NAV_LINK } from "@web/libs/nav";
 import { Notification } from "@web/libs/notification";
@@ -38,7 +37,6 @@ import dayjs from "dayjs";
 import Link from "next/link";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { io } from "socket.io-client";
 
 const { Text } = Typography;
 
@@ -191,32 +189,6 @@ const Header = () => {
       setPage((prevPage) => prevPage + 1);
     }
   }, [isFetching, hasMore]);
-
-  useEffect(() => {
-    // Connect to Socket.IO server
-    const socket = io(process.env.NEXT_PUBLIC_API_URL_SOCKET); // Adjust port to match your socket service
-
-    // Authenticate with user ID when connected
-    socket.on("connect", () => {
-      if (user?.id) {
-        socket.emit("authenticate", user.id);
-      }
-    });
-
-    // Listen for notifications
-    socket.on("notification", (notification: Notification) => {
-      dispatch(addNotification(notification));
-      message.info({
-        content: notification.content,
-        duration: 3,
-      });
-    });
-
-    // Cleanup on unmount
-    return () => {
-      socket.disconnect();
-    };
-  }, [user, dispatch]);
 
   const userAvatar = (
     <a className="flex h-10 items-center justify-end gap-2 px-2">
