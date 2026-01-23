@@ -1,13 +1,15 @@
 # Build stage
-FROM trananhtu/base-build AS builder
+FROM node:18-alpine AS builder
 
-COPY eslint.config.mjs ./
-COPY nx.json ./
-COPY tsconfig*.json ./
-COPY .env ./
+WORKDIR /app
 
-COPY apps/web ./apps/web
+# Copy all source files (needed for Nx monorepo)
+COPY . .
 
+# Install dependencies
+RUN yarn install --frozen-lockfile --network-timeout 600000
+
+# Build the frontend application
 RUN npx nx build web --prod
 
 # Production stage
@@ -15,13 +17,15 @@ FROM node:18-alpine AS production
 
 WORKDIR /app
 
-COPY --from=builder /app/apps/web/.next/standalone/apps/web ./
-COPY --from=builder /app/apps/web/.next/standalone/node_modules ./node_modules
-COPY --from=builder /app/apps/web/.next/static ./.next/static
-COPY --from=builder /app/apps/web/public ./public
+# Copy built application (Standalone Next.js)
+COPY --from=builder /app/dist/apps/web/.next/standalone ./
+COPY --from=builder /app/dist/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder /app/apps/web/public ./apps/web/public
 
-ARG WEB_PORT=3000
-EXPOSE $WEB_PORT
+# Set environment
+ENV NODE_ENV=production
+ENV PORT=3000
 
-CMD ["node", "server.js"]
+EXPOSE 3000
 
+CMD ["node", "apps/web/server.js"]
