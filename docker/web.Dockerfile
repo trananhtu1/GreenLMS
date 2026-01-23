@@ -18,8 +18,8 @@ FROM node:18-alpine AS production
 WORKDIR /app
 
 # Copy built application (Standalone Next.js)
-COPY --from=builder /app/dist/apps/web/.next/standalone ./
-COPY --from=builder /app/dist/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder /app/apps/web/.next/standalone ./
+COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
 COPY --from=builder /app/apps/web/public ./apps/web/public
 
 # Set environment

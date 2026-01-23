@@ -24,7 +24,6 @@ const nextConfig = {
   },
   allowedDevOrigins: ["https://devtobiz.id.vn"],
   output: "standalone",
-  distDir: "../../dist/apps/web/.next",
 };
 
 const plugins = [
